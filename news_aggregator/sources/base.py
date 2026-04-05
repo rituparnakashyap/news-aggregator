@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+import asyncio
+import logging
 from abc import ABC, abstractmethod
 from typing import TYPE_CHECKING, ClassVar
 
@@ -8,6 +10,8 @@ import httpx
 if TYPE_CHECKING:
     from news_aggregator.config.schema import SourceConfig
     from news_aggregator.models.article import Article
+
+logger = logging.getLogger(__name__)
 
 
 class SourceError(Exception):
@@ -43,23 +47,42 @@ class BaseNewsSource(ABC):
         ...
 
     async def _get(self, url: str, params: dict) -> dict:
-        """Shared GET helper with basic error mapping."""
+        """GET with exponential backoff retry (3 attempts) for transient errors."""
+        return await self._fetch_with_retry(url, params, max_retries=3, backoff=1.5)
+
+    async def _fetch_with_retry(
+        self,
+        url: str,
+        params: dict,
+        max_retries: int = 3,
+        backoff: float = 1.5,
+    ) -> dict:
         if self._client is None:
             raise RuntimeError("No httpx client — call fetch() via an async context")
-        try:
-            response = await self._client.get(url, params=params, timeout=15.0)
-        except httpx.TimeoutException as e:
-            raise SourceError(f"[{self.name}] Request timed out: {url}") from e
-        except httpx.RequestError as e:
-            raise SourceError(f"[{self.name}] Request error: {e}") from e
 
-        if response.status_code == 429:
-            raise RateLimitError(f"[{self.name}] Rate limit exceeded")
-        if response.status_code >= 500:
-            raise SourceError(f"[{self.name}] Server error {response.status_code}")
-        if response.status_code >= 400:
-            raise SourceError(
-                f"[{self.name}] Client error {response.status_code}: {response.text[:200]}"
-            )
+        last_exc: Exception | None = None
+        for attempt in range(max_retries):
+            try:
+                response = await self._client.get(url, params=params, timeout=15.0)
+            except httpx.TimeoutException as e:
+                last_exc = SourceError(f"[{self.name}] Request timed out: {url}")
+                logger.warning("%s (attempt %d/%d)", last_exc, attempt + 1, max_retries)
+            except httpx.RequestError as e:
+                raise SourceError(f"[{self.name}] Request error: {e}") from e
+            else:
+                if response.status_code == 429:
+                    raise RateLimitError(f"[{self.name}] Rate limit exceeded")
+                if response.status_code >= 500:
+                    last_exc = SourceError(f"[{self.name}] Server error {response.status_code}")
+                    logger.warning("%s (attempt %d/%d)", last_exc, attempt + 1, max_retries)
+                elif response.status_code >= 400:
+                    raise SourceError(
+                        f"[{self.name}] Client error {response.status_code}: {response.text[:200]}"
+                    )
+                else:
+                    return response.json()
 
-        return response.json()
+            if attempt < max_retries - 1:
+                await asyncio.sleep(backoff ** attempt)
+
+        raise last_exc or SourceError(f"[{self.name}] All {max_retries} retries exhausted")

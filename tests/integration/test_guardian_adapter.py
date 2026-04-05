@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from datetime import datetime, timezone
+from unittest.mock import AsyncMock, patch
 
 import pytest
 import httpx
@@ -85,12 +86,14 @@ async def test_fetch_empty_results(httpx_mock: HTTPXMock, source_config):
 
 @pytest.mark.asyncio
 async def test_fetch_server_error_raises(httpx_mock: HTTPXMock, source_config):
-    httpx_mock.add_response(status_code=503)
+    for _ in range(3):
+        httpx_mock.add_response(status_code=503)
 
     async with httpx.AsyncClient() as client:
         source = GuardianSource(api_key="test-key", config=source_config, client=client)
-        with pytest.raises(SourceError):
-            await source.fetch("technology", lookback_hours=24)
+        with patch("asyncio.sleep", new=AsyncMock()):
+            with pytest.raises(SourceError):
+                await source.fetch("technology", lookback_hours=24)
 
 
 @pytest.mark.asyncio
