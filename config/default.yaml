@@ -1,0 +1,38 @@
+# News Aggregator — Default Configuration
+
+# News sources to fetch from. All enabled by default.
+# API keys are loaded from .env (NEWSAPI_KEY, GUARDIAN_KEY).
+sources:
+  - name: newsapi     # newsapi.org — 100 req/day free
+    enabled: true
+  - name: guardian    # open-platform.theguardian.com — 500 req/day free
+    enabled: true
+  - name: gdelt       # gdeltproject.org — unlimited, no key required
+    enabled: true
+
+# Categories to aggregate. Each can optionally override the global
+# strategy or restrict which sources to use.
+categories:
+  - name: technology
+  - name: finance
+  - name: sports
+  - name: politics
+
+# Global aggregation settings (can be overridden per category)
+aggregation:
+  # Strategy: "TopN" or "TopNLuckyM"
+  strategy: TopN
+  params:
+    n: 5              # return top 5 articles per category
+  lookback_hours: 24  # look back this many hours for articles
+  dedup_threshold: 0.85  # Jaccard similarity threshold for near-duplicate merging
+
+# LLM settings. Model and base_url can use ${ENV_VAR} placeholders.
+llm:
+  model: "${LLM_MODEL}"
+  headline_max_chars: 100   # A — max characters for the generated headline
+  summary_max_lines: 3      # B — number of lines in the generated summary
+  temperature: 0.3
+
+# Output format: "text" | "json" | "markdown"
+output_format: text
