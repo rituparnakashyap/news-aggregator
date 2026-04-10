@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from typing import Any
 
-from pydantic import BaseModel, field_validator, model_validator
+from pydantic import BaseModel, Field, field_validator, model_validator
 
 
 class LLMConfig(BaseModel):
@@ -32,11 +32,19 @@ class SourceConfig(BaseModel):
     extra: dict[str, Any] = {}
 
 
+class CategoryAggregationConfig(BaseModel):
+    """Per-category aggregation overrides — all fields are optional and fall back to global config."""
+    strategy: str | None = None
+    params: dict[str, Any] = {}
+    lookback_hours: int | None = Field(None, ge=1, le=168)
+    dedup_threshold: float | None = Field(None, ge=0.0, le=1.0)
+    output_template: str | None = None  # Jinja2 template; None → strategy default
+
+
 class CategoryConfig(BaseModel):
     name: str
-    sources: list[str] | None = None      # overrides global sources if set
-    strategy: str | None = None           # overrides global strategy if set
-    strategy_params: dict[str, Any] = {}  # overrides global strategy params if set
+    sources: list[str] | None = None  # overrides global sources if set
+    aggregation: CategoryAggregationConfig = Field(default_factory=CategoryAggregationConfig)
 
 
 class AggregationConfig(BaseModel):

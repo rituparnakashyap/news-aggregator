@@ -4,12 +4,13 @@ from news_aggregator.models.article import Article
 
 _SYSTEM_PROMPT = """\
 You are a professional news editor. Your job is to synthesize a set of related news articles \
-into a single concise headline and a multi-line summary.
+into a single concise headline and a list of per-story summary sentences.
 
 Rules:
-- Respond ONLY with a JSON object: {{"headline": "...", "summary": "..."}}
+- Respond ONLY with a JSON object: {{"headline": "...", "summaries": ["...", "...", ...]}}
 - The headline MUST be under {headline_max_chars} characters.
-- The summary MUST be exactly {summary_max_lines} line(s), each line being one complete sentence.
+- summaries MUST be a JSON array of exactly {summary_max_lines} strings, \
+one complete sentence per top story.
 - Do not add any text outside the JSON object.
 - Be factual and neutral. Do not add opinions or speculation."""
 
@@ -37,7 +38,7 @@ def build_prompt(
         f"Here are the top news articles for this category:\n\n"
         f"{articles_text}\n\n"
         f"Please provide a synthesized headline (under {headline_max_chars} characters) "
-        f"and a {summary_max_lines}-line summary capturing the key theme."
+        f"and exactly {summary_max_lines} summary sentence(s) — one per top story."
     )
 
     return [

@@ -5,6 +5,7 @@ import logging
 from datetime import datetime, timezone
 
 import httpx
+from jinja2 import Environment
 
 from news_aggregator.aggregation.deduplicator import Deduplicator
 from news_aggregator.aggregation.registry import get_strategy
@@ -31,6 +32,7 @@ class Pipeline:
             model=config.llm.model,
             temperature=config.llm.temperature,
         )
+        self._jinja = Environment(keep_trailing_newline=True)
 
     async def run(self) -> AggregatedResult:
         async with httpx.AsyncClient() as http_client:
@@ -53,14 +55,19 @@ class Pipeline:
     ) -> CategoryResult | None:
         category = cat_cfg.name
 
+        # Resolve per-category aggregation overrides
+        agg = cat_cfg.aggregation
+        lookback = agg.lookback_hours or self.config.aggregation.lookback_hours
+        dedup_threshold = agg.dedup_threshold if agg.dedup_threshold is not None else self.config.aggregation.dedup_threshold
+        strategy_name = agg.strategy or self.config.aggregation.strategy
+        strategy_params = agg.params or self.config.aggregation.params
+
         # Determine which sources to use
         enabled_source_names = {
             s.name for s in self.config.sources if s.enabled
         }
         source_names = cat_cfg.sources or list(enabled_source_names)
         source_configs = {s.name: s for s in self.config.sources}
-
-        lookback = self.config.aggregation.lookback_hours
 
         # Fetch from all sources concurrently; degrade gracefully on failure
         fetch_tasks = []
@@ -96,29 +103,38 @@ class Pipeline:
                 category=category,
                 articles=[],
                 headline=f"No news available for {category}",
-                summary="No articles were fetched for this category.",
+                summaries=[],
+                rendered_text=f"No news available for {category}\nNo articles were fetched for this category.",
             )
 
         # Deduplicate
-        dedup = Deduplicator(threshold=self.config.aggregation.dedup_threshold)
+        dedup = Deduplicator(threshold=dedup_threshold)
         articles = dedup.deduplicate(articles)
 
         # Apply strategy
-        strategy_name = cat_cfg.strategy or self.config.aggregation.strategy
-        strategy_params = cat_cfg.strategy_params or self.config.aggregation.params
         strategy_cls = get_strategy(strategy_name)
         selected = strategy_cls().select(articles, strategy_params)
 
-        # Generate headline + summary via LLM
-        headline, summary = await self.llm.generate_headline_and_summary(
+        # Generate headline + summaries via LLM
+        headline, summaries = await self.llm.generate_headline_and_summary(
             selected,
             headline_max_chars=self.config.llm.headline_max_chars,
             summary_max_lines=self.config.llm.summary_max_lines,
+        )
+
+        # Render output template
+        template_str = agg.output_template or strategy_cls.default_output_template
+        rendered_text = self._jinja.from_string(template_str).render(
+            headline=headline,
+            summaries=summaries,
+            category=category,
+            article_count=len(articles),
         )
 
         return CategoryResult(
             category=category,
             articles=selected,
             headline=headline,
-            summary=summary,
+            summaries=summaries,
+            rendered_text=rendered_text,
         )

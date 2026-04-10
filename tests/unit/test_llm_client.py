@@ -31,8 +31,8 @@ def _make_client() -> LLMClient:
     )
 
 
-def _mock_completion(headline: str, summary: str) -> MagicMock:
-    content = json.dumps({"headline": headline, "summary": summary})
+def _mock_completion(headline: str, summaries: list[str]) -> MagicMock:
+    content = json.dumps({"headline": headline, "summaries": summaries})
     mock_response = MagicMock()
     mock_response.choices[0].message.content = content
     return mock_response
@@ -135,22 +135,22 @@ def test_build_prompt_falls_back_to_title():
 @pytest.mark.asyncio
 async def test_generate_returns_headline_and_summary():
     client = _make_client()
-    mock_resp = _mock_completion("Tech News Today", "Line one.\nLine two.\nLine three.")
+    mock_resp = _mock_completion("Tech News Today", ["Line one.", "Line two.", "Line three."])
 
     with patch.object(client._client.chat.completions, "create", new=AsyncMock(return_value=mock_resp)):
-        headline, summary = await client.generate_headline_and_summary(
+        headline, summaries = await client.generate_headline_and_summary(
             [_article()], headline_max_chars=100, summary_max_lines=3
         )
 
     assert headline == "Tech News Today"
-    assert "Line one." in summary
+    assert summaries == ["Line one.", "Line two.", "Line three."]
 
 
 @pytest.mark.asyncio
 async def test_generate_truncates_long_headline():
     client = _make_client()
     long_headline = "This is a very long headline that definitely exceeds the character limit set for this test"
-    mock_resp = _mock_completion(long_headline, "Summary line.")
+    mock_resp = _mock_completion(long_headline, ["Summary line."])
 
     with patch.object(client._client.chat.completions, "create", new=AsyncMock(return_value=mock_resp)):
         headline, _ = await client.generate_headline_and_summary(
@@ -178,7 +178,7 @@ async def test_generate_raises_on_invalid_json():
 async def test_generate_raises_on_missing_headline():
     client = _make_client()
     mock_resp = MagicMock()
-    mock_resp.choices[0].message.content = json.dumps({"summary": "A summary."})
+    mock_resp.choices[0].message.content = json.dumps({"summaries": ["A summary."]})
 
     with patch.object(client._client.chat.completions, "create", new=AsyncMock(return_value=mock_resp)):
         with pytest.raises(LLMError, match="missing 'headline'"):
@@ -188,13 +188,13 @@ async def test_generate_raises_on_missing_headline():
 
 
 @pytest.mark.asyncio
-async def test_generate_raises_on_missing_summary():
+async def test_generate_raises_on_missing_summaries():
     client = _make_client()
     mock_resp = MagicMock()
     mock_resp.choices[0].message.content = json.dumps({"headline": "A headline."})
 
     with patch.object(client._client.chat.completions, "create", new=AsyncMock(return_value=mock_resp)):
-        with pytest.raises(LLMError, match="missing 'summary'"):
+        with pytest.raises(LLMError, match="missing 'summaries'"):
             await client.generate_headline_and_summary(
                 [_article()], headline_max_chars=100, summary_max_lines=3
             )

@@ -12,6 +12,7 @@ class StrategyError(Exception):
 
 class BaseStrategy(ABC):
     name: ClassVar[str]
+    default_output_template: ClassVar[str]  # Jinja2 template string; subclasses must define this
 
     @abstractmethod
     def select(self, articles: list[Article], params: dict[str, Any]) -> list[Article]:

@@ -84,11 +84,13 @@ def test_category_result_fields():
         category="technology",
         articles=articles,
         headline="Tech News Today",
-        summary="Line one.\nLine two.\nLine three.",
+        summaries=["Line one.", "Line two.", "Line three."],
+        rendered_text="Tech News Today\n1. Line one.\n2. Line two.\n3. Line three.\n",
     )
     assert result.category == "technology"
     assert len(result.articles) == 1
     assert result.headline == "Tech News Today"
+    assert result.summaries == ["Line one.", "Line two.", "Line three."]
 
 
 def test_aggregated_result_fields():
@@ -97,7 +99,8 @@ def test_aggregated_result_fields():
         category="technology",
         articles=[],
         headline="headline",
-        summary="summary",
+        summaries=["summary"],
+        rendered_text="headline\n1. summary\n",
     )
     agg = AggregatedResult(
         generated_at=now,

@@ -9,6 +9,7 @@ import pytest
 from news_aggregator.config.schema import (
     AggregationConfig,
     AppConfig,
+    CategoryAggregationConfig,
     CategoryConfig,
     LLMConfig,
     SourceConfig,
@@ -62,10 +63,14 @@ def minimal_config() -> AppConfig:
 
 @pytest.fixture
 def mock_llm_response() -> MagicMock:
-    """Returns a mock OpenAI completion response with a canned headline/summary."""
+    """Returns a mock OpenAI completion response with a canned headline/summaries."""
     content = json.dumps({
         "headline": "Tech Industry Sees Major Shift",
-        "summary": "The technology sector experienced significant changes.\nNew developments emerged across multiple areas.\nExperts predict continued growth.",
+        "summaries": [
+            "The technology sector experienced significant changes.",
+            "New developments emerged across multiple areas.",
+            "Experts predict continued growth.",
+        ],
     })
     mock = MagicMock()
     mock.choices[0].message.content = content
@@ -93,13 +98,15 @@ def sample_aggregated_result() -> AggregatedResult:
                 category="technology",
                 articles=articles,
                 headline="Tech News Today",
-                summary="Line one.\nLine two.\nLine three.",
+                summaries=["Line one.", "Line two.", "Line three."],
+                rendered_text="Tech News Today\n1. Line one.\n2. Line two.\n3. Line three.\n",
             ),
             CategoryResult(
                 category="finance",
                 articles=[],
                 headline="Finance Market Update",
-                summary="Markets moved today.\nVolatility continued.\nAnalysts weigh in.",
+                summaries=["Markets moved today.", "Volatility continued.", "Analysts weigh in."],
+                rendered_text="Finance Market Update\n1. Markets moved today.\n2. Volatility continued.\n3. Analysts weigh in.\n",
             ),
         ],
     )

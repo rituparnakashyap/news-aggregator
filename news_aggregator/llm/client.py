@@ -30,8 +30,8 @@ class LLMClient:
         articles: list[Article],
         headline_max_chars: int,
         summary_max_lines: int,
-    ) -> tuple[str, str]:
-        """Return (headline, summary) for the given articles."""
+    ) -> tuple[str, list[str]]:
+        """Return (headline, summaries) for the given articles."""
         if not articles:
             raise LLMError("Cannot generate headline/summary: no articles provided")
 
@@ -50,22 +50,22 @@ class LLMClient:
         raw_content = response.choices[0].message.content or ""
         return self._parse_response(raw_content, headline_max_chars)
 
-    def _parse_response(self, content: str, headline_max_chars: int) -> tuple[str, str]:
+    def _parse_response(self, content: str, headline_max_chars: int) -> tuple[str, list[str]]:
         try:
             data = json.loads(content)
         except json.JSONDecodeError as e:
             raise LLMError(f"LLM returned invalid JSON: {content[:200]}") from e
 
         headline = data.get("headline", "").strip()
-        summary = data.get("summary", "").strip()
+        summaries = data.get("summaries")
 
         if not headline:
             raise LLMError("LLM response missing 'headline' field")
-        if not summary:
-            raise LLMError("LLM response missing 'summary' field")
+        if not summaries or not isinstance(summaries, list):
+            raise LLMError("LLM response missing 'summaries' field")
 
         headline = _truncate_headline(headline, headline_max_chars)
-        return headline, summary
+        return headline, [str(s).strip() for s in summaries]
 
     async def check_connectivity(self) -> bool:
         """Lightweight test — returns True if the LLM endpoint is reachable."""

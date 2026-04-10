@@ -11,7 +11,8 @@ class CategoryResult:
     category: str
     articles: list[Article]
     headline: str
-    summary: str
+    summaries: list[str]   # per-story synthesis strings from the LLM
+    rendered_text: str     # Jinja2-rendered output ready for display
 
 
 @dataclass

@@ -54,8 +54,10 @@ def _make_articles(category: str, count: int = 5, prefix: str = "src") -> list[A
     ]
 
 
-def _mock_llm_completion(headline: str = "Test Headline", summary: str = "Line 1.\nLine 2.\nLine 3."):
-    content = json.dumps({"headline": headline, "summary": summary})
+def _mock_llm_completion(headline: str = "Test Headline", summaries: list[str] | None = None):
+    if summaries is None:
+        summaries = ["Line 1.", "Line 2.", "Line 3."]
+    content = json.dumps({"headline": headline, "summaries": summaries})
     mock_response = MagicMock()
     mock_response.choices[0].message.content = content
     return AsyncMock(return_value=mock_response)
@@ -192,7 +194,7 @@ async def test_pipeline_category_headline_and_summary_set():
         patch(
             "news_aggregator.llm.client.AsyncOpenAI",
             return_value=MagicMock(
-                chat=MagicMock(completions=MagicMock(create=_mock_llm_completion("Test Headline", "L1.\nL2.\nL3.")))
+                chat=MagicMock(completions=MagicMock(create=_mock_llm_completion("Test Headline", ["L1.", "L2.", "L3."])))
             ),
         ),
     ):
@@ -200,4 +202,6 @@ async def test_pipeline_category_headline_and_summary_set():
 
     tech = next(c for c in result.categories if c.category == "technology")
     assert tech.headline == "Test Headline"
-    assert "L1." in tech.summary
+    assert tech.summaries == ["L1.", "L2.", "L3."]
+    assert tech.rendered_text != ""
+    assert "L1." in tech.rendered_text

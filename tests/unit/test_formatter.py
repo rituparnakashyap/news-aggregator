@@ -34,14 +34,14 @@ def test_markdown_format_uses_headers(sample_aggregated_result):
     assert "## Finance" in output
 
 
-def test_markdown_format_bolds_headline(sample_aggregated_result):
+def test_markdown_format_contains_headline(sample_aggregated_result):
     output = format_result(sample_aggregated_result, "markdown")
-    assert "**Tech News Today**" in output
+    assert "Tech News Today" in output
 
 
-def test_markdown_format_uses_bullet_summary(sample_aggregated_result):
+def test_markdown_format_contains_summary(sample_aggregated_result):
     output = format_result(sample_aggregated_result, "markdown")
-    assert "- Line one." in output
+    assert "Line one." in output
 
 
 def test_json_format_is_valid_json(sample_aggregated_result):
@@ -61,6 +61,16 @@ def test_json_format_has_generated_at(sample_aggregated_result):
     output = format_result(sample_aggregated_result, "json")
     data = json.loads(output)
     assert "generated_at" in data
+
+
+def test_json_format_has_summaries_and_rendered_text(sample_aggregated_result):
+    output = format_result(sample_aggregated_result, "json")
+    data = json.loads(output)
+    cat = data["categories"][0]
+    assert "summaries" in cat
+    assert isinstance(cat["summaries"], list)
+    assert "rendered_text" in cat
+    assert "Tech News Today" in cat["rendered_text"]
 
 
 def test_unknown_format_falls_back_to_text(sample_aggregated_result):

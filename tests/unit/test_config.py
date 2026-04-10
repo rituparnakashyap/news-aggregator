@@ -9,7 +9,7 @@ import yaml
 from pydantic import ValidationError
 
 from news_aggregator.config.loader import ConfigError, load_config
-from news_aggregator.config.schema import AppConfig, AggregationConfig, LLMConfig, SourceConfig
+from news_aggregator.config.schema import AppConfig, AggregationConfig, CategoryAggregationConfig, LLMConfig, SourceConfig
 
 
 # ---------------------------------------------------------------------------
@@ -155,12 +155,42 @@ def test_category_references_unknown_source(tmp_path):
 # Category-level overrides
 # ---------------------------------------------------------------------------
 
-def test_category_strategy_override(tmp_path):
+def test_category_aggregation_override(tmp_path):
     data = yaml.safe_load(MINIMAL_YAML)
-    data["categories"][0]["strategy"] = "TopNLuckyM"
-    data["categories"][0]["strategy_params"] = {"n": 5, "m": 2}
+    data["categories"][0]["aggregation"] = {"strategy": "TopNLuckyM", "params": {"n": 5, "m": 2}}
     p = tmp_path / "config.yaml"
     p.write_text(yaml.dump(data))
     cfg = load_config(p)
-    assert cfg.categories[0].strategy == "TopNLuckyM"
-    assert cfg.categories[0].strategy_params == {"n": 5, "m": 2}
+    assert cfg.categories[0].aggregation.strategy == "TopNLuckyM"
+    assert cfg.categories[0].aggregation.params == {"n": 5, "m": 2}
+
+
+def test_category_lookback_and_dedup_override(tmp_path):
+    data = yaml.safe_load(MINIMAL_YAML)
+    data["categories"][0]["aggregation"] = {"lookback_hours": 48, "dedup_threshold": 0.75}
+    p = tmp_path / "config.yaml"
+    p.write_text(yaml.dump(data))
+    cfg = load_config(p)
+    assert cfg.categories[0].aggregation.lookback_hours == 48
+    assert cfg.categories[0].aggregation.dedup_threshold == 0.75
+
+
+def test_category_output_template_stored(tmp_path):
+    template = "{{ headline }}\n{% for s in summaries %}* {{ s }}\n{% endfor %}"
+    data = yaml.safe_load(MINIMAL_YAML)
+    data["categories"][0]["aggregation"] = {"output_template": template}
+    p = tmp_path / "config.yaml"
+    p.write_text(yaml.dump(data))
+    cfg = load_config(p)
+    assert cfg.categories[0].aggregation.output_template == template
+
+
+def test_category_aggregation_defaults_to_empty(tmp_path):
+    p = _write_yaml(tmp_path, MINIMAL_YAML)
+    cfg = load_config(p)
+    agg = cfg.categories[0].aggregation
+    assert agg.strategy is None
+    assert agg.params == {}
+    assert agg.lookback_hours is None
+    assert agg.dedup_threshold is None
+    assert agg.output_template is None

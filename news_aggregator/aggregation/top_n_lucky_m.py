@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 import random
-from typing import Any
+from typing import Any, ClassVar
 
 from news_aggregator.aggregation.base import BaseStrategy, StrategyError
 from news_aggregator.aggregation.registry import register
@@ -11,6 +11,12 @@ from news_aggregator.models.article import Article
 @register
 class TopNLuckyMStrategy(BaseStrategy):
     name = "TopNLuckyM"
+    default_output_template: ClassVar[str] = (
+        "{{ headline }}\n"
+        "{% for s in summaries %}"
+        "{{ loop.index }}. {{ s }}\n"
+        "{% endfor %}"
+    )
 
     def select(self, articles: list[Article], params: dict[str, Any]) -> list[Article]:
         if "n" not in params:

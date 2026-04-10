@@ -10,15 +10,28 @@ sources:
   - name: gdelt       # gdeltproject.org — unlimited, no key required
     enabled: true
 
-# Categories to aggregate. Each can optionally override the global
-# strategy or restrict which sources to use.
+# Categories to aggregate. Each can optionally override the global aggregation
+# config or restrict which sources to use.
+#
+# Full per-category aggregation example:
+#   - name: technology
+#     sources: [newsapi, guardian]   # optional: restrict sources for this category
+#     aggregation:
+#       strategy: TopN               # optional: override global strategy
+#       params: {n: 3}               # optional: override strategy params
+#       lookback_hours: 48           # optional: override lookback window
+#       dedup_threshold: 0.90        # optional: override dedup sensitivity
+#       output_template: |           # optional: custom Jinja2 template
+#         {{ headline }}
+#         {% for s in summaries %}{{ loop.index }}. {{ s }}
+#         {% endfor %}
 categories:
   - name: technology
   - name: finance
   - name: sports
   - name: politics
 
-# Global aggregation settings (can be overridden per category)
+# Global aggregation settings (can be overridden per category via aggregation: block)
 aggregation:
   # Strategy: "TopN" or "TopNLuckyM"
   strategy: TopN
@@ -31,7 +44,7 @@ aggregation:
 llm:
   model: "${LLM_MODEL}"
   headline_max_chars: 100   # A — max characters for the generated headline
-  summary_max_lines: 3      # B — number of lines in the generated summary
+  summary_max_lines: 3      # B — number of per-story summary sentences
   temperature: 0.3
 
 # Output format: "text" | "json" | "markdown"
