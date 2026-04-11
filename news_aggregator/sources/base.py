@@ -80,7 +80,13 @@ class BaseNewsSource(ABC):
                         f"[{self.name}] Client error {response.status_code}: {response.text[:200]}"
                     )
                 else:
-                    return response.json()
+                    try:
+                        return response.json()
+                    except ValueError as e:
+                        raise SourceError(
+                            f"[{self.name}] Invalid JSON in response "
+                            f"(status {response.status_code}, body: {response.text[:100]!r})"
+                        ) from e
 
             if attempt < max_retries - 1:
                 await asyncio.sleep(backoff ** attempt)

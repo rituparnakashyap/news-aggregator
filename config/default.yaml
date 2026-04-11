@@ -44,7 +44,7 @@ aggregation:
 llm:
   model: "${LLM_MODEL}"
   headline_max_chars: 100   # A — max characters for the generated headline
-  summary_max_lines: 3      # B — number of per-story summary sentences
+  summary_max_lines: 5      # B — number of per-story summary sentences (should match aggregation.params.n)
   temperature: 0.3
 
 # Output format: "text" | "json" | "markdown"
