@@ -1,8 +1,26 @@
 from __future__ import annotations
 
-from typing import Any
+from typing import Annotated, Any, Literal
 
 from pydantic import BaseModel, Field, field_validator, model_validator
+
+
+class EmailDeliveryConfig(BaseModel):
+    type: Literal["email"]
+    recipients: list[str]
+    subject_prefix: str = "[News Digest]"
+
+
+class SlackDeliveryConfig(BaseModel):
+    type: Literal["slack"]
+    channel: str
+    webhook_url: str = ""
+
+
+DeliveryConfig = Annotated[
+    EmailDeliveryConfig | SlackDeliveryConfig,
+    Field(discriminator="type"),
+]
 
 
 class LLMConfig(BaseModel):
@@ -74,6 +92,7 @@ class AppConfig(BaseModel):
     aggregation: AggregationConfig
     llm: LLMConfig
     output_format: str = "text"
+    delivery: list[DeliveryConfig] = []
 
     @field_validator("output_format")
     @classmethod

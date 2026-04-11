@@ -10,6 +10,7 @@ import typer
 from dotenv import load_dotenv
 
 from news_aggregator.config.loader import ConfigError, load_config
+from news_aggregator.output.emailer import dispatch_deliveries
 from news_aggregator.output.formatter import format_result
 from news_aggregator.output.writers import write_output
 from news_aggregator.pipeline import Pipeline
@@ -78,6 +79,11 @@ def run(
 
     content = format_result(result, cfg.output_format)
     write_output(content, output_file)
+
+    if cfg.delivery:
+        md_content = content if cfg.output_format == "markdown" \
+            else format_result(result, "markdown")
+        dispatch_deliveries(md_content, cfg.delivery, dict(os.environ))
 
 
 @app.command()

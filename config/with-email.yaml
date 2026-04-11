@@ -1,0 +1,41 @@
+# News Aggregator — Config with Email Delivery
+# Copy this file and update the recipients list, then run:
+#   news-aggregator run --config config/with-email.yaml
+#
+# SMTP credentials must be set in .env:
+#   SMTP_HOST, SMTP_PORT, SMTP_USER, SMTP_PASSWORD, EMAIL_FROM
+
+sources:
+  - name: newsapi
+    enabled: true
+  - name: guardian
+    enabled: true
+  - name: gdelt
+    enabled: true
+
+categories:
+  - name: technology
+  - name: finance
+  - name: sports
+  - name: politics
+
+aggregation:
+  strategy: TopN
+  params:
+    n: 5
+  lookback_hours: 24
+  dedup_threshold: 0.85
+
+llm:
+  model: "${LLM_MODEL}"
+  headline_max_chars: 100
+  summary_max_lines: 3
+  temperature: 0.3
+
+output_format: markdown
+
+delivery:
+  - type: email
+    recipients:
+      - you@example.com
+    subject_prefix: "[News Digest]"
