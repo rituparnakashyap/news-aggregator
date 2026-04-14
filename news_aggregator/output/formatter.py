@@ -26,7 +26,8 @@ def _format_text(result: AggregatedResult) -> str:
         lines.append(f"\n[{cat.category.upper()}]")
         lines.append(cat.rendered_text.rstrip())
         if cat.articles:
-            lines.append(f"  ({len(cat.articles)} article(s) aggregated)")
+            sources = sorted({a.source.adapter_name for a in cat.articles})
+            lines.append(f"  Sources: {', '.join(sources)}")
     return "\n".join(lines)
 
 
@@ -39,10 +40,15 @@ def _format_markdown(result: AggregatedResult) -> str:
     for cat in result.categories:
         lines.append(f"## {cat.category.title()}")
         lines.append("")
-        lines.append(cat.rendered_text.rstrip())
+        lines.append(cat.headline)
+        lines.append("")
+        for i, (summary, article) in enumerate(zip(cat.summaries, cat.articles), 1):
+            link = f"[{article.source.adapter_name}]({article.url})"
+            lines.append(f"{i}. {summary} {link}")
         lines.append("")
         if cat.articles:
-            lines.append(f"*{len(cat.articles)} article(s) aggregated*")
+            sources = sorted({a.source.adapter_name for a in cat.articles})
+            lines.append(f"*Sources: {', '.join(sources)}*")
         lines.append("")
         lines.append("---")
         lines.append("")
